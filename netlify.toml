@@ -1,0 +1,7 @@
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/api/rb/lead"
+  to = "/.netlify/functions/rb-lead"
+  status = 200

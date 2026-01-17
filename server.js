@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { createClient } from "@supabase/supabase-js";
+import supabase from "./services/supabase.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,25 +24,16 @@ const REQUIRED_FIELDS = [
   "monthlyPayment",
 ];
 
-function buildSupabaseClient() {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false },
-  });
-}
-
 function getIp(headers = {}) {
   const forwarded = headers["x-forwarded-for"];
   if (forwarded) {
     return forwarded.split(",")[0].trim();
   }
-  return headers["x-nf-client-connection-ip"] || "";
+  return headers["x-real-ip"] || "";
+}
+
+function getSourcePage(headers = {}) {
+  return headers.referer || headers.origin || "";
 }
 
 function normalizePayload(body, headers) {
@@ -70,7 +61,7 @@ function normalizePayload(body, headers) {
     sponsor_country: body.sponsorCountry || "",
     willing_visit: body.willingVisit || "",
     visit_window: body.visitWindow || "",
-    source_page: headers.referer || "",
+    source_page: getSourcePage(headers),
     user_agent: headers["user-agent"] || "",
     ip: getIp(headers),
     created_at: new Date().toISOString(),
@@ -78,14 +69,6 @@ function normalizePayload(body, headers) {
 }
 
 app.post("/api/rb/lead", async (req, res) => {
-  const supabase = buildSupabaseClient();
-  if (!supabase) {
-    return res.status(500).json({
-      success: false,
-      error: "Server not configured (SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing).",
-    });
-  }
-
   const payload = req.body || {};
   const missing = REQUIRED_FIELDS.filter((field) => {
     const value = payload[field];

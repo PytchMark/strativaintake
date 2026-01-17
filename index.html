@@ -159,18 +159,17 @@
         width: 40px;
         height: 40px;
         border-radius: 999px;
-        background: radial-gradient(
-          circle at 30% 0,
-          rgba(245, 196, 83, 1),
-          rgba(20, 184, 166, 1)
-        );
+        background: #ffffff;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #0b1024;
-        font-weight: 700;
-        font-size: 18px;
         box-shadow: 0 0 15px rgba(245, 196, 83, 0.7);
+        overflow: hidden;
+      }
+      .rb-logo-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
       }
       .rb-brand-text {
         display: flex;
@@ -910,7 +909,13 @@
       <div class="rb-card rb-card--active" id="rbCard">
         <div class="rb-header">
           <div class="rb-brand-block">
-            <div class="rb-logo-circle">S</div>
+            <div class="rb-logo-circle">
+              <img
+                class="rb-logo-image"
+                src="https://cwwledkdttpzmgycdvse.supabase.co/storage/v1/object/public/strativa/ChatGPT%20Image%20Nov%2023,%202025,%2007_45_43%20PM.png"
+                alt="Strativa Rebuild logo"
+              />
+            </div>
             <div class="rb-brand-text">
               <div class="rb-brand-text-title">Strativa Rebuild</div>
               <div class="rb-brand-text-sub">Quick pre-qual check, not a loan approval.</div>
@@ -1322,10 +1327,11 @@
             <!-- SUCCESS (UPDATED WITH BOOKING CTA + REDIRECT NOTE) -->
             <div class="rb-success" id="rbSuccess">
               <div class="rb-success-check"><i class="fa-solid fa-check"></i></div>
-              <div class="rb-success-title">Submitted!</div>
+              <div class="rb-success-title">One more step.</div>
 
               <div class="rb-success-copy" style="margin-top:6px;">
-                Next step: <strong>book your quick rebuild review</strong> so we can confirm where you are now and map the fastest path forward.
+                You&rsquo;re almost done. Please <strong>lock in a time</strong> so we can call you with more details and quotes about your
+                potential project.
               </div>
 
               <div class="rb-success-copy" style="margin-top:10px;">
@@ -1570,7 +1576,7 @@
         if (backBtn) backBtn.style.display = rbState.step === 1 ? "none" : "inline-flex";
 
         if (nextBtnLabel) {
-          nextBtnLabel.textContent = rbState.step === rbState.maxStep ? "Send My Details to Strativa" : "Next";
+          nextBtnLabel.textContent = rbState.step === rbState.maxStep ? "Final Step" : "Next";
         }
 
         // update summary when entering step 5
@@ -1916,7 +1922,7 @@
           rbState.isSaving = false;
           rbShowGlobalError("We couldn’t save your details right now. Please try again or contact us directly.");
           if (nextBtn) nextBtn.disabled = false;
-          if (nextLabel) nextLabel.textContent = "Send My Details to Strativa";
+          if (nextLabel) nextLabel.textContent = "Final Step";
         }
       }
 

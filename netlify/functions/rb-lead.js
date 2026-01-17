@@ -1,18 +1,4 @@
-import express from "express";
-import path from "path";
-import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const app = express();
-
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true }));
-
-app.use(express.static(__dirname));
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 
 const REQUIRED_FIELDS = [
   "fullName",
@@ -23,19 +9,6 @@ const REQUIRED_FIELDS = [
   "estimatedBudget",
   "monthlyPayment",
 ];
-
-function buildSupabaseClient() {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false },
-  });
-}
 
 function getIp(headers = {}) {
   const forwarded = headers["x-forwarded-for"];
@@ -77,29 +50,57 @@ function normalizePayload(body, headers) {
   };
 }
 
-app.post("/api/rb/lead", async (req, res) => {
-  const supabase = buildSupabaseClient();
-  if (!supabase) {
-    return res.status(500).json({
-      success: false,
-      error: "Server not configured (SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing).",
-    });
+export async function handler(event) {
+  if (event.httpMethod !== "POST") {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ success: false, error: "Method Not Allowed" }),
+    };
   }
 
-  const payload = req.body || {};
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        success: false,
+        error: "Server not configured (SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing).",
+      }),
+    };
+  }
+
+  let payload = {};
+  try {
+    payload = JSON.parse(event.body || "{}");
+  } catch (error) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ success: false, error: "Invalid JSON payload." }),
+    };
+  }
+
   const missing = REQUIRED_FIELDS.filter((field) => {
     const value = payload[field];
     return value === undefined || value === null || String(value).trim() === "";
   });
 
   if (missing.length > 0) {
-    return res.status(400).json({
-      success: false,
-      error: `Missing required fields: ${missing.join(", ")}.`,
-    });
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        success: false,
+        error: `Missing required fields: ${missing.join(", ")}.`,
+      }),
+    };
   }
 
-  const insertPayload = normalizePayload(payload, req.headers);
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false },
+  });
+
+  const insertPayload = normalizePayload(payload, event.headers || {});
 
   const { data, error } = await supabase
     .from("rb_leads")
@@ -108,17 +109,20 @@ app.post("/api/rb/lead", async (req, res) => {
     .single();
 
   if (error) {
-    return res.status(500).json({
-      success: false,
-      error: error.message || "Failed to write to Supabase.",
-    });
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        success: false,
+        error: error.message || "Failed to write to Supabase.",
+      }),
+    };
   }
 
-  return res.json({
-    success: true,
-    leadId: data?.id || null,
-  });
-});
-
-const port = process.env.PORT || 8080;
-app.listen(port, "0.0.0.0", () => console.log(`Running on port ${port}`));
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      success: true,
+      leadId: data?.id || null,
+    }),
+  };
+}
